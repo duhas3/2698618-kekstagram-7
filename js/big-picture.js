@@ -1,5 +1,7 @@
 import { isEscapeKey } from './util.js';
 
+const COMMENTS_PER_PORTION = 5;
+
 const bigPictureElement = document.querySelector('.big-picture');
 const bodyElement = document.querySelector('body');
 const closePictureButtonElement = bigPictureElement.querySelector('.big-picture__cancel');
@@ -9,6 +11,9 @@ const socialCaptionElement = bigPictureElement.querySelector('.social__caption')
 const commentListElement = bigPictureElement.querySelector('.social__comments');
 const commentCountElement = bigPictureElement.querySelector('.social__comment-count');
 const commentsLoaderElement = bigPictureElement.querySelector('.comments-loader');
+
+let commentsShown = 0;
+let comments = [];
 
 const createComment = ({ avatar, name, message }) => {
   const commentElement = document.createElement('li');
@@ -23,16 +28,28 @@ const createComment = ({ avatar, name, message }) => {
   return commentElement;
 };
 
-const renderComments = (comments) => {
-  commentListElement.innerHTML = '';
-  const fragment = document.createDocumentFragment();
+const renderComments = () => {
+  const nextComments = comments.slice(commentsShown, commentsShown + COMMENTS_PER_PORTION);
+  commentsShown += nextComments.length;
 
-  comments.forEach((item) => {
+  const fragment = document.createDocumentFragment();
+  nextComments.forEach((item) => {
     const commentElement = createComment(item);
     fragment.append(commentElement);
   });
 
   commentListElement.append(fragment);
+  commentCountElement.innerHTML = `${commentsShown} из <span class="comments-count">${comments.length}</span> комментариев`;
+
+  if (commentsShown >= comments.length) {
+    commentsLoaderElement.classList.add('hidden');
+  } else {
+    commentsLoaderElement.classList.remove('hidden');
+  }
+};
+
+const onCommentsLoaderClick = () => {
+  renderComments();
 };
 
 const renderPictureDetails = ({ url, likes, description }) => {
@@ -47,6 +64,9 @@ const closeBigPicture = () => {
   bodyElement.classList.remove('modal-open');
   document.removeEventListener('keydown', onDocumentKeydown);
   closePictureButtonElement.removeEventListener('click', onClosePictureButtonClick);
+  commentsLoaderElement.removeEventListener('click', onCommentsLoaderClick);
+  commentsShown = 0;
+  comments = [];
 };
 
 function onDocumentKeydown(evt) {
@@ -63,14 +83,16 @@ function onClosePictureButtonClick() {
 const showBigPicture = (data) => {
   bigPictureElement.classList.remove('hidden');
   bodyElement.classList.add('modal-open');
-  commentsLoaderElement.classList.add('hidden');
-  commentCountElement.classList.add('hidden');
 
   document.addEventListener('keydown', onDocumentKeydown);
   closePictureButtonElement.addEventListener('click', onClosePictureButtonClick);
+  commentsLoaderElement.addEventListener('click', onCommentsLoaderClick);
 
   renderPictureDetails(data);
-  renderComments(data.comments);
+  comments = data.comments;
+  commentsShown = 0;
+  commentListElement.innerHTML = '';
+  renderComments();
 };
 
 export { showBigPicture };
